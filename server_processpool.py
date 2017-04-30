@@ -1,4 +1,4 @@
-!/router/bin/python3
+#!/router/bin/python3
 # This is server.py file
 
 from socket import *                         # Import socket module
