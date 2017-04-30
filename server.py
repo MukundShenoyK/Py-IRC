@@ -41,8 +41,8 @@ def processInput(client, request):
     switcher = { 
         0: joinGroup,
         1: broadcastGroups,
-#        2: multicastGroups,
- #       3: privateMsg
+        2: multicastGroups,
+        3: privateMsg
     }
     function = switcher.get(key, panicHandler)
     function(client, msg)
