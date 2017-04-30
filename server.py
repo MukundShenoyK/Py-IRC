@@ -56,7 +56,8 @@ def server(address):
         client, addr = sock.accept()      # Establish connection with client.
         print("Connection to ",addr);
         clients.append(client)
-        Thread(target=client_handler, args=(client,), daemon=True).start()
+	# Removing daemon=True for now, as it is not working on Ubuntu 14.04
+        Thread(target=client_handler, args=(client,)).start()
 
 
 def client_handler(client):
