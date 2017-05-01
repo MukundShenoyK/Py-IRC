@@ -4,6 +4,10 @@
 from socket import *                         # Import socket module
 from threading import Thread                 # Import Thread module
 from concurrent.futures import ProcessPoolExecutor as Pool
+import logging
+
+logging.basicConfig(filename="server.log", level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 pool = Pool(4)
 RECV_BUFFER_LIMIT = 2048
