@@ -26,12 +26,6 @@ class IRCClient(object):
 		while True:
 			data = raw_input(">>>")
 			s_fd.sendall(data)
-			#if first_time:
-			#	print("Recv data from server")
-			#	data = s_fd.recv(4096)
-			#	print("{}\n".format(data))
-			#	print("Response recv: from server")
-			#first_time = False
 
 		s_fd.close()
 
@@ -54,7 +48,7 @@ def main(host, port, name):
 
 if __name__ == '__main__':
 	if len(sys.argv) < 4:
-		print("Usage: python client.py <name> <host> <port>\n")
+		print("Usage: python client.py <host> <port> <name>\n")
 		sys.exit()
 	
 	logger.info("Starting client on ({}, {})".format(sys.argv[3], sys.argv[3]))

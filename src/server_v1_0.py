@@ -4,18 +4,18 @@
 from socket import *                         # Import socket module
 from threading import Thread                 # Import Thread module
 import time
-#from concurrent.futures import ProcessPoolExecutor as Pool
+from concurrent.futures import ProcessPoolExecutor as Pool
 import logging
 from data import ChannelInfo, ClientInfo
 
 logging.basicConfig(filename="server.log", level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-#pool = Pool(4)
+pool = Pool(4)
 RECV_BUFFER_LIMIT = 2048
 first_response = str("IRC Server Connected: ").encode('ascii')
 
-clientsz = {}
+#clients = []
 groups = {}
 
 def snapshot():
@@ -26,8 +26,6 @@ def snapshot():
             for client in clients:
                 print("Connected at: {}".format(client.getpeername()))
         print("--------------")
-        print(clientsz)
-        print("----------")
         time.sleep(10)
     
 def joinGroup(client, group_name, user_name=None):
@@ -36,7 +34,7 @@ def joinGroup(client, group_name, user_name=None):
         if client not in clientList:
             clientList.append(client)
     else:
-        #ChannelInfo(name=group_name, members=[user_name]).save()
+        ChannelInfo(name=group_name, members=[user_name]).save()
         groups[group_name] = [client]
 
     broadcastGroups(groups[group_name], str(user_name) + " joined the group")
@@ -44,7 +42,7 @@ def joinGroup(client, group_name, user_name=None):
 
 def register(client, request, user_name=None):
     logger.debug("Registering user: {}".format(request))
-    #ClientInfo(name=request, messages=[]).save()
+    ClientInfo(name=request, messages=[]).save()
 
     return request
 
@@ -55,12 +53,8 @@ def broadcastGroups(clients, msg, user_name=None):
         logger.debug("client: {}".format(client))
         client.send(msg)
 
-def multicastGroups(client, msg, user_name=None):
-    #msg = str(msg).encode('ascii') 
-    arr = msg.split(" ")
-    group_name = arr[1]
-    msg_out = "".join(arr[2:])
-    broadcastGroups(groups[group_name], msg_out)
+def multicastGroups(client, msg, user_name):
+    msg = str(msg).encode('ascii') 
  
 def panicHandler(client, request):
     msg = "Invalid Request: " + str(request)
@@ -68,19 +62,7 @@ def panicHandler(client, request):
     client.send(msg)            
 
 def private_msg(client, request, user_name=None):
-    global clientsz
-    msgList = request.split(" ",1)
-    endUser = msgList[0].rstrip()
-    if endUser  in clientsz:
-        endUsersoc =  clientsz[endUser];
-        msg = msgList[-1].encode('ascii')
-        endUsersoc.send(msg)
-    else:
-        msg = "Invalid username: "+ str(endUser)
-        msg.encode('ascii')
-        client.send(msg)
-
-    print(clientsz)
+    pass
 
 def processInput(client, request, user_name=None):
     msgList  = request.split(" ",1)
@@ -94,7 +76,7 @@ def processInput(client, request, user_name=None):
         4: register
     }
     function = switcher.get(key, panicHandler)
-    if key == 2:
+    if key >= 5:
         return function(client, request, user_name)
     else:
         return function(client, msg, user_name)
@@ -113,21 +95,12 @@ def server(address):
 
 
 def client_handler(client):
-    global clientsz
     client.send(first_response)
     user_name = None
     while True:
         request = client.recv(RECV_BUFFER_LIMIT)
         if not user_name:
             user_name = processInput(client, request.decode('utf-8'))
-            #print(user_name)
-            #print(type(user_name))
-            user_name = user_name.rstrip()
-            if user_name not in clientsz.keys():
-                clientsz[user_name] = client
-            else:
-                msg = "Username not available".encode('ascii')
-                client.send(msg)
         else:
             processInput(client, request.decode('utf-8'), user_name)
         
