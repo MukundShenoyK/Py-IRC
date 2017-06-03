@@ -1,7 +1,9 @@
 from socket import *   
 from threading import Thread 
 import time
+import sys
 import logging
+from redis import StrictRedis
 from data import ChannelInfo, ClientInfo
 
 logging.basicConfig(filename="server.log", level=logging.DEBUG)
@@ -10,8 +12,27 @@ logger = logging.getLogger(__name__)
 RECV_BUFFER_LIMIT = 2048
 first_response = str("IRC Server Connected: ").encode('ascii')
 
+if len(sys.argv) <= 2:
+    print "Usage ./start.sh <port> <server_name>"
+    sys.exit(1)
+
+server_name = sys.argv[2] + ":"
 client_name_to_sock_mapping = {}
 groups = {}
+
+s_redis = StrictRedis(host="localhost", port=6379, db=0)
+
+def redis_thread():
+    while True:
+        time.sleep(1)
+        for group_name in groups.keys():
+            if s_redis.get(group_name):
+                s_name, msg = s_redis.get(group_name).split(":")
+                print("Got message from server: {}, msg: {}".format(s_name, msg))
+                if s_name != server_name[:-1]:
+                    print("Got from different server: {}, msg: {}".format(s_name, msg))
+                    broadcast_groups(groups[group_name], msg, None)
+                    s_redis.delete(group_name)
 
 def snapshot():
     while True:
@@ -33,6 +54,7 @@ def join_group(client, group_name, user_name=None):
     else:
         groups[group_name] = [client]
 
+	s_redis.set(group_name, server_name + str(user_name) + " joined the group")
     broadcast_groups(groups[group_name], str(user_name) + " joined the group")
     logger.debug("len(groups[group_name]): {}".format(groups[group_name]))
 
@@ -52,6 +74,7 @@ def multicast_groups(client, msg, user_name=None):
     arr = msg.split(" ")
     group_name = arr[1]
     msg_out = "".join(arr[2:])
+    s_redis.set(group_name, server_name + msg_out)
     broadcast_groups(groups[group_name], msg_out)
  
 def panic_handler(client, request):
@@ -122,6 +145,7 @@ def client_handler(client):
     print("Done!")
 
 Thread(target=snapshot, args=()).start()
-server(('',12345))
+Thread(target=redis_thread, args=()).start()
+server(('',int(sys.argv[1])))
 
 
