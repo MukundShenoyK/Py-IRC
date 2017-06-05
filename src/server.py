@@ -5,20 +5,23 @@ import sys
 import logging
 from redis import StrictRedis
 from data import ChannelInfo, ClientInfo
+from utils import get_code_from_str
 
-logging.basicConfig(filename="server.log", level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 RECV_BUFFER_LIMIT = 2048
-first_response = str("IRC Server Connected: ").encode('ascii')
 
 if len(sys.argv) <= 2:
     print "Usage ./start.sh <port> <server_name>"
     sys.exit(1)
 
 server_name = sys.argv[2] + ":"
+first_response = "Welcome to IRC Server: "
 client_name_to_sock_mapping = {}
 groups = {}
+switcher = {}
+
+logging.basicConfig(filename="server_" + server_name[:-1] + ".log", level=logging.INFO)
+logger = logging.getLogger(" [SERVER] - ")
 
 s_redis = StrictRedis(host="localhost", port=6379, db=0)
 
@@ -28,22 +31,23 @@ def redis_thread():
         for group_name in groups.keys():
             if s_redis.get(group_name):
                 s_name, msg = s_redis.get(group_name).split(":")
-                print("Got message from server: {}, msg: {}".format(s_name, msg))
                 if s_name != server_name[:-1]:
-                    print("Got from different server: {}, msg: {}".format(s_name, msg))
+                    logger.info("Got msg from server: {}, msg: {}".format(s_name, msg))
                     broadcast_groups(groups[group_name], msg, None)
                     s_redis.delete(group_name)
 
 def snapshot():
     while True:
-        print("---Snapshot---")
+        logger.info("")
+        logger.info("PERF  groups: {}".format(len(client_name_to_sock_mapping)))
+        logger.info("PERF clients: {}".format(len(groups)))
+        logger.info("")
         for grp_name, clients in groups.iteritems():
-            print("Group: {}".format(grp_name))
+            logger.info("Group: {}".format(grp_name))
             for client in clients:
-                print("Connected at: {}".format(client.getpeername()))
-        print("--------------")
-        print(client_name_to_sock_mapping)
-        print("----------")
+                logger.info("Connected at: {}".format(client.getpeername()))
+        logger.info("--------------")
+        logger.info(client_name_to_sock_mapping.keys())
         time.sleep(10)
     
 def join_group(client, group_name, user_name=None):
@@ -95,19 +99,13 @@ def private_msg(client, request, user_name=None):
         msg.encode('ascii')
         client.send(msg)
 
-    print(client_name_to_sock_mapping)
+    logger.info(client_name_to_sock_mapping)
 
 def process_input(client, request, user_name=None):
-    msgList  = request.split(" ",1)
-    key = int(msgList[0])
+    msgList  = request.split(" ", 1)
+    key = int(get_code_from_str(msgList[0]))
     msg = str(msgList[-1])
-    switcher = { 
-        0: join_group,
-        1: broadcast_groups,
-        2: multicast_groups,
-        3: private_msg,
-        4: register
-    }
+
     function = switcher.get(key, panic_handler)
     if key == 2:
         return function(client, request, user_name)
@@ -121,13 +119,13 @@ def server(address):
     sock.listen(5)                               # Now wait for client connection.
     while True:
         client, addr = sock.accept()      # Establish connection with client.
-        print("Connection to ",addr);
+        logger.info("Connection to " +  str(addr));
         Thread(target=client_handler, args=(client,)).start()
 
 
 def client_handler(client):
     global client_name_to_sock_mapping
-    client.send(first_response)
+    client.send(first_response + server_name[:-1] + ", Press ^C to exit")
     user_name = None
     while True:
         request = client.recv(RECV_BUFFER_LIMIT)
@@ -142,10 +140,20 @@ def client_handler(client):
         else:
             process_input(client, request.decode('utf-8'), user_name)
         
-    print("Done!")
+    logger.info("Done!")
 
+def boot_up():
+    global switcher
+
+    switcher = { 
+        0: join_group,
+        1: broadcast_groups,
+        2: multicast_groups,
+        3: private_msg,
+        4: register
+    }
+
+boot_up()
 Thread(target=snapshot, args=()).start()
 Thread(target=redis_thread, args=()).start()
 server(('',int(sys.argv[1])))
-
-

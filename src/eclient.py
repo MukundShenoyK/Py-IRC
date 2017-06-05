@@ -6,7 +6,7 @@ import time
 import logging
 
 logging.basicConfig(filename="client.log", level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(" [CLIENT] - ")
 
 class IRCClient(object):
 	def __init__(self, host, port, name):
@@ -24,7 +24,7 @@ class IRCClient(object):
 		time.sleep(2)
 		first_time = True
 		while True:
-			data = raw_input(">>>")
+			data = raw_input("")
 			s_fd.sendall(data)
 
 		s_fd.close()
@@ -33,11 +33,11 @@ class IRCClient(object):
 		logger.info("Listening for server input on separate thread\n")
 		while True:
 			data = s_fd.recv(4096)
-			print("Recieved from server: {}\n".format(data))
+			print("[SERVER] - {}".format(data))
 
 	def register_client(self, s_fd):
 		logger.debug("Registering client")
-		s_fd.sendall("4 {}\n".format(self.name))	
+		s_fd.sendall("REGISTER {}\n".format(self.name))	
 		data = s_fd.recv(4096)
 		print(data)
 
