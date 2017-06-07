@@ -14,6 +14,14 @@ class IRCClient(object):
 		self.port = port
 		self.name = name
 
+	def return_res(self, data):
+		data = data.split(" ")[1].split(",")
+		output_f = 0
+		for item in data:
+			output_f += int(item)
+		
+		return str(output_f)
+
 	def start_client(self):
 		s_fd = socket.socket(AF_INET, SOCK_STREAM)
 		s_fd.connect((self.host, self.port))
@@ -34,7 +42,20 @@ class IRCClient(object):
 		while True:
 			data = s_fd.recv(4096)
 			print("[SERVER] - {}".format(data))
-
+			#s_fd.sendall("COMPUTE 16")
+			if "COMPUTE" in data.split(" ")[0]:
+			    print("Server wants client to compute something {}".format(data))
+			    s_fd.sendall("COMPUTE " + self.return_res(data))
+			    print("Sent COMPUTE to server")
+                #arr = data.split(" ")[1].split(",")
+                #outp = 0
+                #for item in arr:
+                #    outp += int(item)
+                #print("output = {}".format(outp))
+			    #s_fd.sendall("COMPUTE {}".format(outp))
+                s_fd.sendall("COMPUTE {}".format(16))
+                print("Sent COMPUTE {}".format(16))
+			    #print("Sent 'COMPUTE 997' to server")
 	def register_client(self, s_fd):
 		logger.debug("Registering client")
 		s_fd.sendall("REGISTER {}\n".format(self.name))	
