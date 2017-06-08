@@ -23,9 +23,9 @@ comp_res_expected = 0
 input_arr = ['1', '2', '3', '7', '3', '7', '8', '10', '1', '3']
 comp_len = 5
 client_name_to_res_mapping = {}
-client_name_to_num_mapping = {'Parvez': 1, 'Mukund': 2}
+client_name_to_num_mapping = {}
 # To be used to generate client_name_to_num_mapping
-#client_num = 1
+client_num = 1
 
 logging.basicConfig(filename="server_" + server_name[:-1] + ".log", level=logging.INFO)
 logger = logging.getLogger(" [SERVER] - ")
@@ -162,7 +162,7 @@ def server(address):
 
 
 def client_handler(client):
-    global client_name_to_sock_mapping
+    global client_name_to_sock_mapping, client_num
     client.send(first_response + server_name[:-1] + ", Press ^C to exit")
     user_name = None
     while True:
@@ -170,6 +170,8 @@ def client_handler(client):
         if not user_name:
             user_name = process_input(client, request.decode('utf-8'))
             user_name = user_name.rstrip()
+            client_name_to_num_mapping[user_name] = client_num
+            client_num += 1
             if user_name not in client_name_to_sock_mapping.keys():
                 client_name_to_sock_mapping[user_name] = client
             else:
