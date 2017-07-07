@@ -19,6 +19,8 @@ first_response = "Welcome to IRC Server: "
 client_name_to_sock_mapping = {}
 groups = {}
 switcher = {}
+
+# Things related to compute logic
 comp_res_expected = 0
 input_arr = ['1', '2', '3', '7', '3', '7', '8', '10', '1', '3']
 comp_len = 5
@@ -26,6 +28,30 @@ client_name_to_res_mapping = {}
 client_name_to_num_mapping = {}
 # To be used to generate client_name_to_num_mapping
 client_num = 1
+
+def send_compute_to_client():
+    time.sleep(5)
+    print("Sleep over")
+    global comp_res_expected
+    comp_res_expected = len(client_name_to_sock_mapping.keys())
+    while comp_res_expected != 0:
+        print comp_res_expected
+        for client_name, client_sock in client_name_to_sock_mapping.iteritems():
+            client_indx = client_name_to_num_mapping[client_name]
+            inp = ",".join(input_arr[comp_len*(client_indx-1):comp_len*client_indx])
+            client_sock.sendall("COMPUTE " + inp)
+        print("Computation not over yet, sleep(1)")
+        time.sleep(2)
+    if comp_res_expected == 0:
+        print("Computation over {}".format(client_name_to_res_mapping))
+
+    output_f = 0
+    if comp_res_expected == 0:
+        for key, value in client_name_to_res_mapping.iteritems():
+            output_f += int(value)
+    print("Final Output = {}".format(output_f))
+# Done ...        
+
 
 logging.basicConfig(filename="server_" + server_name[:-1] + ".log", level=logging.INFO)
 logger = logging.getLogger(" [SERVER] - ")
@@ -57,29 +83,6 @@ def snapshot():
         logger.info(client_name_to_sock_mapping.keys())
         time.sleep(10)
    
-def send_compute_to_client():
-    time.sleep(5)
-    print("Sleep over")
-    global comp_res_expected
-    comp_res_expected = len(client_name_to_sock_mapping.keys())
-    while comp_res_expected != 0:
-        print comp_res_expected
-        for client_name, client_sock in client_name_to_sock_mapping.iteritems():
-            client_indx = client_name_to_num_mapping[client_name]
-            inp = ",".join(input_arr[comp_len*(client_indx-1):comp_len*client_indx])
-            client_sock.sendall("COMPUTE " + inp)
-        print("Computation not over yet, sleep(1)")
-        time.sleep(2)
-    if comp_res_expected == 0:
-        print("Computation over {}".format(client_name_to_res_mapping))
-
-    output_f = 0
-    if comp_res_expected == 0:
-        for key, value in client_name_to_res_mapping.iteritems():
-            output_f += int(value)
-    print("Final Output = {}".format(output_f))
-        
-
 
 def join_group(client, group_name, user_name=None):
     if group_name in groups:
@@ -195,6 +198,6 @@ def boot_up():
 
 boot_up()
 #Thread(target=snapshot, args=()).start()
-Thread(target=send_compute_to_client, args=()).start()
+#Thread(target=send_compute_to_client, args=()).start()
 Thread(target=redis_thread, args=()).start()
 server(('',int(sys.argv[1])))
