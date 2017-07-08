@@ -1,4 +1,5 @@
 import socket
+import requests
 import sys
 from socket import AF_INET, SOCK_STREAM
 import threading
@@ -42,20 +43,13 @@ class IRCClient(object):
 		while True:
 			data = s_fd.recv(4096)
 			print("[SERVER] - {}".format(data))
-			#s_fd.sendall("COMPUTE 16")
 			if "COMPUTE" in data.split(" ")[0]:
 			    print("Server wants client to compute something {}".format(data))
 			    s_fd.sendall("COMPUTE " + self.return_res(data))
 			    print("Sent COMPUTE to server")
-                #arr = data.split(" ")[1].split(",")
-                #outp = 0
-                #for item in arr:
-                #    outp += int(item)
-                #print("output = {}".format(outp))
-			    #s_fd.sendall("COMPUTE {}".format(outp))
                 s_fd.sendall("COMPUTE {}".format(16))
                 print("Sent COMPUTE {}".format(16))
-			    #print("Sent 'COMPUTE 997' to server")
+
 	def register_client(self, s_fd):
 		logger.debug("Registering client")
 		s_fd.sendall("REGISTER {}\n".format(self.name))	
@@ -68,9 +62,12 @@ def main(host, port, name):
 	irc_client.start_client()
 
 if __name__ == '__main__':
-	if len(sys.argv) < 4:
-		print("Usage: python client.py <host> <port> <name>\n")
-		sys.exit()
-	
-	logger.info("Starting client on ({}, {})".format(sys.argv[3], sys.argv[3]))
-	main(sys.argv[1], sys.argv[2], sys.argv[3])
+    if len(sys.argv) < 2:
+        print("Usage: python client.py <name>")
+        sys.exit(1)
+    else:
+        host, port, name = requests.get("http://localhost:6666/server").text.split(":")
+        try:
+            main(host, port, sys.argv[1])
+        except socket.error:
+            print("Exception caught while connecting to server, please check if {}:{} is running".format(host, port))

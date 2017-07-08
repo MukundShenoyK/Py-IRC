@@ -65,22 +65,28 @@ def redis_thread():
             if s_redis.get(group_name):
                 s_name, msg = s_redis.get(group_name).split(":")
                 if s_name != server_name[:-1]:
-                    logger.info("Got msg from server: {}, msg: {}".format(s_name, msg))
+                    print("Got msg from server: {}, msg: {}".format(s_name, msg))
                     broadcast_groups(groups[group_name], msg, None)
                     s_redis.delete(group_name)
 
+        for client_name in client_name_to_sock_mapping.keys():
+            if s_redis.get(client_name):
+                client_name_to_sock_mapping[client_name].send(s_redis.get(client_name))
+                s_redis.delete(client_name)
+                               
+
 def snapshot():
     while True:
-        logger.info("")
-        logger.info("PERF  groups: {}".format(len(client_name_to_sock_mapping)))
-        logger.info("PERF clients: {}".format(len(groups)))
-        logger.info("")
+        print("")
+        print("PERF  groups: {}".format(len(client_name_to_sock_mapping)))
+        print("PERF clients: {}".format(len(groups)))
+        print("")
         for grp_name, clients in groups.iteritems():
-            logger.info("Group: {}".format(grp_name))
+            print("Group: {}".format(grp_name))
             for client in clients:
-                logger.info("Connected at: {}".format(client.getpeername()))
-        logger.info("--------------")
-        logger.info(client_name_to_sock_mapping.keys())
+                print("Connected at: {}".format(client.getpeername()))
+        print("--------------")
+        print(client_name_to_sock_mapping.keys())
         time.sleep(10)
    
 
@@ -129,11 +135,9 @@ def private_msg(client, request, user_name=None):
         msg = msgList[-1].encode('ascii')
         endUsersoc.send(msg)
     else:
-        msg = "Invalid username: "+ str(endUser)
-        msg.encode('ascii')
-        client.send(msg)
+        s_redis.set(endUser, msgList[-1].encode('ascii'))
 
-    logger.info(client_name_to_sock_mapping)
+    print(client_name_to_sock_mapping)
 
 def process_input(client, request, user_name=None):
     msgList  = request.split(" ", 1)
@@ -158,9 +162,16 @@ def server(address):
     sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1) # Set socket options
     sock.bind(address)                           # Bind to the port
     sock.listen(5)                               # Now wait for client connection.
+    curr_servers_list = s_redis.get("servers")
+    if curr_servers_list == "" or curr_servers_list is None:
+        curr_servers_list = "localhost:{}:{}".format(address[1], server_name[:-1])
+    else:
+        curr_servers_list = curr_servers_list + "," + "localhost:{}:{}".format(address[1], server_name[:-1])
+    s_redis.set("servers", curr_servers_list)
+ 
     while True:
         client, addr = sock.accept()      # Establish connection with client.
-        logger.info("Connection to " +  str(addr));
+        print("Connection to " +  str(addr));
         Thread(target=client_handler, args=(client,)).start()
 
 
@@ -183,7 +194,7 @@ def client_handler(client):
         else:
             process_input(client, request.decode('utf-8'), user_name)
         
-    logger.info("Done!")
+    print("Done!")
 
 def boot_up():
     global switcher
